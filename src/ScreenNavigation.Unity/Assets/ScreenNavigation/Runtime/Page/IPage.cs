@@ -1,8 +1,9 @@
-﻿namespace ScreenNavigation.Page
+﻿using VitalRouter;
+
+namespace ScreenNavigation.Page
 {
     public interface IPage
     {
-        void OnShow();
-        void OnHide();
+        Router Router { get; }
     }
 }

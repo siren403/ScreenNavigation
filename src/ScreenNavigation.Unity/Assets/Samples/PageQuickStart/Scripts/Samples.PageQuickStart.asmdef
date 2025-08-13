@@ -4,7 +4,10 @@
     "references": [
         "ScreenNavigation",
         "VContainer",
-        "VitalRouter"
+        "VitalRouter",
+        "UniTask",
+        "LitMotion",
+        "LitMotion.Animation"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -22,24 +22,6 @@ Modal (사용자 집중 필요한 오버레이)
 └── Notification (시스템 알림, 자동 처리)
 ```
 
-### 현재 구현된 레이어 구성
-```
-┌─────────────────────────────────────┐
-│        Command 레이어               │
-│    VitalRouter Command 발행         │
-├─────────────────────────────────────┤
-│      비즈니스 로직 레이어             │
-│       PagePresenter                 │
-│  (Command 처리 + 페이지 관리)        │
-├─────────────────────────────────────┤
-│       데이터 관리 레이어             │
-│ PageRegistry | PageStack            │
-├─────────────────────────────────────┤
-│        Unity View 레이어            │
-│     IPage 구현체들                  │
-│   (CanvasPage, HomePage 등)         │
-└─────────────────────────────────────┘
-```
 
 ### 도메인별 구성요소
 각 도메인은 다음 3요소로 구성:
@@ -133,10 +115,11 @@ public interface IParentProvider
 ### 현재 구현된 핵심 컴포넌트
 
 **PagePresenter**: VitalRouter 기반 Command 처리기
-- `ToPageCommand`: 모든 페이지 클리어 후 새 페이지 이동
-- `PushPageCommand`: 현재 페이지 위에 새 페이지 추가
+- `ToPageCommand`: 모든 페이지 클리어 후 새 페이지 이동 (중복 방지)
+- `PushPageCommand`: 현재 페이지 위에 새 페이지 추가 (중복 방지)
 - `BackPageCommand`: 이전 페이지로 돌아가기
-- `ReplacePageCommand`: 현재 페이지를 새 페이지로 교체
+- `ReplacePageCommand`: 현재 페이지를 새 페이지로 교체 (중복 방지)
+- 페이지별 Router를 통한 `ShowCommand`/`HideCommand` 발행
 
 **PageRegistry**: 페이지 등록 및 인스턴스 관리
 - Addressable 시스템을 통한 동적 로딩
@@ -145,27 +128,37 @@ public interface IParentProvider
 **PageStack**: 페이지 히스토리 관리
 - Stack 기반 페이지 순서 추적
 
-**IPage**: 페이지 생명주기 인터페이스
-- `OnShow()`, `OnHide()` 메서드
+**IPage**: 페이지 라이프사이클 인터페이스
+- 각 페이지가 자체 `Router` 소유 및 노출
+- `ShowCommand`/`HideCommand`를 통한 비동기 애니메이션 처리
+
+**CanvasPage**: IPage의 기본 구현체
+- LitMotion 기반 Show/Hide 애니메이션 지원
+- Canvas enabled/disabled를 통한 화면 제어
+- VitalRouter 기반 Command 처리 (`[Route]` 어트리뷰트)
 
 ### 현재 아키텍처 vs 설계 문서 차이점
 
 **실제 구현**:
-- PagePresenter가 모든 로직을 직접 처리 (Command 수신, 페이지 관리)
-- Event 발행 시스템 없음
+- PagePresenter가 페이지 네비게이션 전담 (Command 수신, 라우팅)
+- 각 페이지가 자체 Router 소유하여 Show/Hide Command 처리
 - Parameters 지원 없음 (pageId만 사용)
-- 동기 방식 페이지 제어 (OnShow/OnHide)
+- **비동기 방식 페이지 제어** (ShowCommand/HideCommand with UniTask)
+- **애니메이션 지원** (LitMotion 통합)
+- **중복 방지 로직** (동일 페이지 연속 실행 방지)
 
 **설계 문서**:
 - Controller/Navigator 분리 구조
 - Event 기반 시스템
 - Parameters 지원
-- 비동기 방식 페이지 제어
 
-**공통 구현 완료**:
+**✅ 구현 완료된 기능**:
 - VitalRouter 기반 Command 패턴
 - PageStack을 통한 히스토리 관리
 - Addressable을 통한 동적 로딩
+- **페이지별 독립 Router 시스템**
+- **비동기 Show/Hide 애니메이션**
+- **중복 네비게이션 방지**
 
 ## 2단계: History 기능 추가
 
@@ -279,13 +272,16 @@ public partial class NavigationEventLogger : MonoBehaviour
 ## 개발 순서 및 현재 상태
 
 ### ✅ 완료된 기능
-1. **Page 도메인 기본 구현**: To, Push, Back, Replace Command 처리
+1. **Page 도메인 기본 구현**: To, Push, Back, Replace Command 처리 (중복 방지 포함)
 2. **PageStack 히스토리 관리**: Stack 기반 페이지 순서 추적
 3. **PageRegistry**: Addressable 기반 동적 로딩 및 캐싱
 4. **VitalRouter 통합**: Command 패턴 기반 아키텍처
+5. **페이지별 독립 Router**: 각 페이지가 자체 Router 소유 및 생명주기 관리
+6. **비동기 애니메이션 시스템**: ShowCommand/HideCommand를 통한 LitMotion 애니메이션
+7. **Canvas 기반 화면 제어**: CanvasPage를 통한 기본적인 UI 표시/숨김
 
 ### 🚧 현재 진행 중
-- Page 도메인 기본 기능 안정화
+- Page 도메인 고도화 (Parameters, Event 시스템)
 
 ### 📋 향후 계획
 1. **Event 시스템 추가**: 네비게이션 이벤트 발행

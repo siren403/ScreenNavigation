@@ -25,7 +25,7 @@ namespace ScreenNavigation.Extensions
             builder.RegisterBuildCallback(container =>
             {
                 var presenter = container.Resolve<PagePresenter>();
-                presenter.AllHide();
+                presenter.Initialize();
             });
         }
 
