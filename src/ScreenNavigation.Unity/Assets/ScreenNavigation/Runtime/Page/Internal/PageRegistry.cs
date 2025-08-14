@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Cysharp.Threading.Tasks;
+using GameKit.Common.Results;
+using Microsoft.Extensions.Logging;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using VitalRouter;
+using Void = GameKit.Common.Results.Void;
 
 namespace ScreenNavigation.Page.Internal
 {
@@ -36,6 +40,8 @@ namespace ScreenNavigation.Page.Internal
 
     internal class PageRegistry : IDisposable
     {
+        private readonly ILogger<PageRegistry> _logger;
+
         /// <summary>
         /// Id: IPage
         /// </summary>
@@ -50,16 +56,23 @@ namespace ScreenNavigation.Page.Internal
 
         public IEnumerable<PageEntry> CachedPages => _cachedPages.Values;
 
+        public PageRegistry(ILogger<PageRegistry> logger)
+        {
+            _logger = logger;
+        }
+
         public void AddPage(string pageId, IPage page)
         {
             if (string.IsNullOrEmpty(pageId))
             {
-                throw new ArgumentException("Page ID cannot be null or empty.", nameof(pageId));
+                _logger.LogDebug("Page.AddPage: {pageId} cannot be null or empty.", pageId);
+                return;
             }
 
             if (_cachedPages.ContainsKey(pageId))
             {
-                throw new InvalidOperationException($"Page with ID '{pageId}' already exists in the registry.");
+                _logger.LogDebug("Page.AddPage: Page with ID '{pageId}' already exists in the registry.", pageId);
+                return;
             }
 
             var router = new Router(CommandOrdering.Drop);
@@ -76,17 +89,18 @@ namespace ScreenNavigation.Page.Internal
         {
             if (string.IsNullOrEmpty(pageId))
             {
-                throw new ArgumentException("Page ID cannot be null or empty.", nameof(pageId));
+                _logger.LogDebug("Page.AddPage: {pageId} cannot be null or empty.", pageId);
+                return;
             }
 
             if (string.IsNullOrEmpty(key))
             {
-                throw new ArgumentException("Addressable key cannot be null or empty.", nameof(key));
+                _logger.LogDebug("Page.AddPage: {key} cannot be null or empty.", key);
+                return;
             }
 
             var factory = UniTask.Lazy(async () =>
             {
-                Debug.Log($"Adding page with ID '{pageId}'.");
                 var handle = Addressables.InstantiateAsync(key, parent);
                 await handle;
                 if (!handle.IsValid())
@@ -99,44 +113,59 @@ namespace ScreenNavigation.Page.Internal
                 return handle.Result.GetComponent<T>() as IPage;
             });
 
-            if (!_addressableFactories.TryAdd(pageId, factory))
+            if (_addressableFactories.TryAdd(pageId, factory))
             {
-                throw new InvalidOperationException($"Page with ID '{pageId}' already exists in the registry.");
+                return;
             }
+
+            _logger.LogDebug(
+                "Page.AddPage: Page with ID '{pageId}' already exists in the registry.",
+                pageId
+            );
         }
 
-        public async UniTask<PageEntry> GetPageAsync(string pageId)
+        public async UniTask<FastResult<PageEntry>> GetPageAsync(string pageId)
         {
             if (_cachedPages.TryGetValue(pageId, out var cached))
             {
-                return cached;
+                return FastResult<PageEntry>.Ok(cached);
             }
 
             if (!_addressableFactories.TryGetValue(pageId, out var factory))
             {
-                throw new KeyNotFoundException($"Page with ID '{pageId}' not found in registry.");
+                return FastResult<PageEntry>.Fail(
+                    "Page.GetPageAsync",
+                    $"Page with ID '{pageId}' not found in registry."
+                );
             }
 
-            var page = await factory;
             var router = new Router(CommandOrdering.Drop);
-            page.MapTo(router);
-            var entry = new PageEntry(
-                pageId,
-                page,
-                router
-            );
-            _cachedPages[pageId] = entry;
-            return entry;
+            try
+            {
+                var page = await factory;
+                page.MapTo(router);
+                var entry = new PageEntry(
+                    pageId,
+                    page,
+                    router
+                );
+                _cachedPages[pageId] = entry;
+                return FastResult<PageEntry>.Ok(entry);
+            }
+            catch (Exception e)
+            {
+                return FastResult<PageEntry>.Fail(
+                    "Page.GetPage",
+                    $"Failed to load page with ID '{pageId}': {e.Message}"
+                );
+            }
         }
 
         public void Dispose()
         {
-            foreach (var handle in _loadedHandles)
+            foreach (var handle in _loadedHandles.Where(handle => handle.IsValid()))
             {
-                if (handle.IsValid())
-                {
-                    Addressables.Release(handle);
-                }
+                Addressables.Release(handle);
             }
 
             foreach (var entry in _cachedPages.Values)

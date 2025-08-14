@@ -289,3 +289,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   showAnimation: {fileID: 3030164224710602459}
   hideAnimation: {fileID: 1729677520495885971}
+  throwOnShow: 1
+  throwOnHide: 0
+  forceVisibleOnPageError: 1

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using GameKit.Common.Results;
 
 namespace ScreenNavigation.Page.Internal
 {
@@ -13,21 +14,26 @@ namespace ScreenNavigation.Page.Internal
             _stack.Push(pageId);
         }
 
-        public string Pop()
+        public FastResult<string> Pop()
         {
             if (_stack.Count == 0)
             {
-                throw new System.InvalidOperationException("Cannot pop from an empty stack.");
+                return FastResult<string>.Fail("Page.EmptyStack");
             }
-            return _stack.Pop();
+
+            return FastResult<string>.Ok(_stack.Pop());
         }
 
         public bool TryPop(out string pageId)
         {
             if (Any)
             {
-                pageId = Pop();
-                return true;
+                var popResult = Pop();
+                if (!popResult.IsError)
+                {
+                    pageId = popResult.Value;
+                    return true;
+                }
             }
 
             pageId = null;

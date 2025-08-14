@@ -1,6 +1,8 @@
 ﻿using Cysharp.Threading.Tasks;
+using GameKit.Common.Results;
 using Microsoft.Extensions.Logging;
 using ScreenNavigation.Page.Commands;
+using ScreenNavigation.Page.Errors;
 using VitalRouter;
 
 namespace ScreenNavigation.Page.Internal
@@ -11,26 +13,45 @@ namespace ScreenNavigation.Page.Internal
         private readonly PagePresenter _presenter;
         private readonly PageStack _stack;
         private readonly PageRegistry _registry;
+        private readonly Router _router;
         private readonly ILogger<PageNavigator> _logger;
 
         public PageNavigator(
             PagePresenter presenter,
             PageStack stack,
             PageRegistry registry,
+            Router router,
             ILogger<PageNavigator> logger
         )
         {
             _presenter = presenter;
             _stack = stack;
             _registry = registry;
+            _router = router;
             _logger = logger;
         }
 
-        public bool IsTopPage(string pageId)
+        public bool IsCurrentPage(string pageId)
         {
-            return _presenter.IsRendering(pageId)
-                   && _stack.TryPeek(out var topPageId)
-                   && topPageId == pageId;
+            return _presenter.IsRendering(pageId) && AlreadyCurrentPage(pageId);
+        }
+
+        private bool AlreadyCurrentPage(string pageId)
+        {
+            var result = _stack.TryPeek(out var currentPageId) && currentPageId == pageId;
+
+            if (result)
+            {
+                _logger.LogDebug("Cannot replace with the same page.");
+                _ = _router.PublishAsync(new PageErrorCommand(
+                    pageId: pageId,
+                    operation: PageOperation.None,
+                    errorCode: PageErrorCodes.AlreadyCurrent,
+                    message: $"Already on page '{pageId}'"
+                ));
+            }
+
+            return result;
         }
 
         [Route]
@@ -38,23 +59,45 @@ namespace ScreenNavigation.Page.Internal
         {
             var newPageId = command.PageId;
             // 1. 중복 체크 (Navigator가 Stack 상태 확인)
-            if (_stack.TryPeek(out var currentId) && currentId == newPageId)
+            if (AlreadyCurrentPage(newPageId))
             {
-                _logger.LogDebug("Cannot replace with the same page.");
                 return;
             }
 
-            var newPage = await _registry.GetPageAsync(newPageId);
+            var newPageResult = await _registry.GetPageAsync(newPageId);
+            if (newPageResult.IsError)
+            {
+                _ = _router.PublishAsync(new PageErrorCommand(
+                    pageId: newPageId,
+                    operation: PageOperation.To,
+                    errorCode: PageErrorCodes.NotFound,
+                    message: $"Page '{newPageId}' not found: {newPageResult}"
+                ));
+                return;
+            }
+
+            var newPage = newPageResult.Value;
 
             // 3. 모든 기존 페이지 숨기기 + Stack 조작
             while (_stack.TryPop(out var id))
             {
-                var popPage = await _registry.GetPageAsync(id);
-                await _presenter.HidePageAsync(popPage);
+                var popPageResult = await _registry.GetPageAsync(id);
+                if (popPageResult.IsError)
+                {
+                    continue;
+                }
+
+                var popPage = popPageResult.Value;
+                _presenter.HidePage(popPage);
             }
 
             // 4. 새 페이지 표시 + Stack에 추가
-            await _presenter.ShowPageAsync(newPage, context.CancellationToken);
+            var showResult = await _presenter.ShowPageAsync(newPage, context.CancellationToken);
+            if (showResult.IsError)
+            {
+                return;
+            }
+
             _stack.Push(newPageId);
         }
 
@@ -64,8 +107,20 @@ namespace ScreenNavigation.Page.Internal
         {
             if (_stack.TryPop(out var id))
             {
-                var backPage = await _registry.GetPageAsync(id);
-                await _presenter.HidePageAsync(backPage);
+                var backPageResult = await _registry.GetPageAsync(id);
+                if (backPageResult.IsError)
+                {
+                    _ = _router.PublishAsync(new PageErrorCommand(
+                        pageId: id,
+                        operation: PageOperation.Back,
+                        errorCode: PageErrorCodes.NotFound,
+                        message: $"Back page '{id}' not found: {backPageResult}"
+                    ));
+                    return;
+                }
+
+                var backPage = backPageResult.Value;
+                _presenter.HidePage(backPage);
             }
             else
             {
@@ -75,8 +130,24 @@ namespace ScreenNavigation.Page.Internal
 
             if (_stack.TryPeek(out var nextId))
             {
-                var nextPage = await _registry.GetPageAsync(nextId);
-                await _presenter.ShowPageAsync(nextPage, context.CancellationToken);
+                var nextPageResult = await _registry.GetPageAsync(nextId);
+                if (nextPageResult.IsError)
+                {
+                    _ = _router.PublishAsync(new PageErrorCommand(
+                        pageId: nextId,
+                        operation: PageOperation.Back,
+                        errorCode: PageErrorCodes.NotFound,
+                        message: $"Next page '{nextId}' not found: {nextPageResult}"
+                    ));
+                    return;
+                }
+
+                var nextPage = nextPageResult.Value;
+                var showResult = await _presenter.ShowPageAsync(nextPage, context.CancellationToken);
+                if (showResult.IsError)
+                {
+                    return;
+                }
             }
             else
             {
@@ -89,7 +160,25 @@ namespace ScreenNavigation.Page.Internal
         private async UniTask On(PushPageCommand command, PublishContext context)
         {
             var newPageId = command.PageId;
-            var newPage = await _registry.GetPageAsync(newPageId);
+
+            if (AlreadyCurrentPage(newPageId))
+            {
+                return;
+            }
+
+            var newPageResult = await _registry.GetPageAsync(newPageId);
+            if (newPageResult.IsError)
+            {
+                _ = _router.PublishAsync(new PageErrorCommand(
+                    pageId: newPageId,
+                    operation: PageOperation.Push,
+                    errorCode: PageErrorCodes.NotFound,
+                    message: $"Page '{newPageId}' not found: {newPageResult}"
+                ));
+                return;
+            }
+
+            var newPage = newPageResult.Value;
 
             if (_stack.TryPeek(out var currentId))
             {
@@ -99,11 +188,28 @@ namespace ScreenNavigation.Page.Internal
                     return;
                 }
 
-                var currentPage = await _registry.GetPageAsync(currentId);
-                await _presenter.HidePageAsync(currentPage);
+                var currentPageResult = await _registry.GetPageAsync(currentId);
+                if (currentPageResult.IsError)
+                {
+                    _ = _router.PublishAsync(new PageErrorCommand(
+                        pageId: currentId,
+                        operation: PageOperation.Push,
+                        errorCode: PageErrorCodes.NotFound,
+                        message: $"Current page '{currentId}' not found: {currentPageResult}"
+                    ));
+                    return;
+                }
+
+                var currentPage = currentPageResult.Value;
+                _presenter.HidePage(currentPage);
             }
 
-            await _presenter.ShowPageAsync(newPage, context.CancellationToken);
+            var showResult = await _presenter.ShowPageAsync(newPage, context.CancellationToken);
+            if (showResult.IsError)
+            {
+                return;
+            }
+
             _stack.Push(newPageId);
         }
 
@@ -111,25 +217,53 @@ namespace ScreenNavigation.Page.Internal
         private async UniTask On(ReplacePageCommand command, PublishContext context)
         {
             var newPageId = command.PageId;
-            if (_stack.TryPeek(out var currentId) && currentId == newPageId)
+            if (AlreadyCurrentPage(newPageId))
             {
-                _logger.LogDebug("Cannot replace with the same page.");
                 return;
             }
 
-            var newPage = await _registry.GetPageAsync(newPageId);
+            var newPageResult = await _registry.GetPageAsync(newPageId);
+            if (newPageResult.IsError)
+            {
+                _ = _router.PublishAsync(new PageErrorCommand(
+                    pageId: newPageId,
+                    operation: PageOperation.Replace,
+                    errorCode: PageErrorCodes.NotFound,
+                    message: $"Page '{newPageId}' not found: {newPageResult}"
+                ));
+                return;
+            }
+
+            var newPage = newPageResult.Value;
 
             if (_stack.TryPop(out var oldId))
             {
-                var oldPage = await _registry.GetPageAsync(oldId);
-                await _presenter.HidePageAsync(oldPage);
+                var oldPageResult = await _registry.GetPageAsync(oldId);
+                if (oldPageResult.IsError)
+                {
+                    _ = _router.PublishAsync(new PageErrorCommand(
+                        pageId: oldId,
+                        operation: PageOperation.Replace,
+                        errorCode: PageErrorCodes.NotFound,
+                        message: $"Old page '{oldId}' not found: {oldPageResult}"
+                    ));
+                    return;
+                }
+
+                var oldPage = oldPageResult.Value;
+                _presenter.HidePage(oldPage);
             }
             else
             {
                 _logger.LogDebug("No page to replace.");
             }
 
-            await _presenter.ShowPageAsync(newPage, context.CancellationToken);
+            var showResult = await _presenter.ShowPageAsync(newPage, context.CancellationToken);
+            if (showResult.IsError)
+            {
+                return;
+            }
+
             _stack.Push(newPageId);
         }
     }

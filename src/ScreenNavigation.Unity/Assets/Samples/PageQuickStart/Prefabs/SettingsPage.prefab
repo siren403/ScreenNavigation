@@ -284,6 +284,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   showAnimation: {fileID: 1364214730023684753}
   hideAnimation: {fileID: 2369712355839875801}
+  throwOnShow: 0
+  throwOnHide: 0
 --- !u!224 &8338503579401940561 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 3589741186864678077, guid: 7a9b7cd39523a4443897a29a66022347, type: 3}

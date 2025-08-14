@@ -1,8 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
+using GameKit.Common.Results;
 using ScreenNavigation.Page.Commands;
+using ScreenNavigation.Page.Errors;
 
 namespace ScreenNavigation.Page.Internal
 {
@@ -20,22 +21,34 @@ namespace ScreenNavigation.Page.Internal
             _rendering.Clear();
         }
 
-        public async UniTask ShowPageAsync(PageEntry entry, CancellationToken ct = default)
+        public async UniTask<FastResult<Void>> ShowPageAsync(PageEntry entry, CancellationToken ct = default)
         {
             var (id, _, router) = entry;
-            await router.PublishAsync(new ShowCommand(), ct);
-            _rendering.Add(id);
+            try
+            {
+                await router.PublishAsync(new ShowCommand(), ct);
+                _rendering.Add(id);
+                return FastResult.Ok;
+            }
+            catch
+            {
+                _ = router.PublishAsync(new PageErrorCommand(
+                    pageId: id,
+                    operation: PageOperation.None,
+                    errorCode: PageErrorCodes.ShowFailed,
+                    message: $"Failed to show page '{id}'"
+                ), ct);
+                return FastResult<Void>.Fail(PageErrorCodes.ShowFailed, $"Failed to show page '{id}'");
+            }
         }
 
-        public UniTask HidePageAsync(PageEntry entry)
+        public void HidePage(PageEntry entry)
         {
             var (id, _, router) = entry;
             if (_rendering.Remove(id))
             {
                 _ = router.PublishAsync(new HideCommand());
             }
-
-            return UniTask.CompletedTask;
         }
 
         internal bool IsRendering(string id)

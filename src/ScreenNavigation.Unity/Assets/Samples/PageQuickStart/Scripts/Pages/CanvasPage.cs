@@ -1,4 +1,5 @@
-﻿using Cysharp.Threading.Tasks;
+﻿using System;
+using Cysharp.Threading.Tasks;
 using LitMotion.Animation;
 using ScreenNavigation.Page;
 using ScreenNavigation.Page.Commands;
@@ -14,6 +15,9 @@ namespace Samples.PageQuickStart.Pages
         [SerializeField] private LitMotionAnimation showAnimation;
         [SerializeField] private LitMotionAnimation hideAnimation;
 
+        [SerializeField] private bool throwOnShow = false;
+        [SerializeField] private bool throwOnHide = false;
+
         public bool IsVisible
         {
             set
@@ -27,6 +31,12 @@ namespace Samples.PageQuickStart.Pages
         [Route]
         private async UniTask On(ShowCommand command)
         {
+            if (throwOnShow)
+            {
+                await UniTask.Delay(TimeSpan.FromMilliseconds(100));
+                throw new Exception($"Show failed for page: {name}");
+            }
+
             if (showAnimation != null)
             {
                 showAnimation.Play();
@@ -48,6 +58,12 @@ namespace Samples.PageQuickStart.Pages
         [Route]
         private async UniTask On(HideCommand command)
         {
+            if (throwOnHide)
+            {
+                await UniTask.Delay(TimeSpan.FromMilliseconds(100));
+                throw new Exception($"Hide failed for page: {name}");
+            }
+
             if (hideAnimation != null)
             {
                 hideAnimation.Play();
@@ -60,6 +76,13 @@ namespace Samples.PageQuickStart.Pages
             }
 
             GetComponent<Canvas>().enabled = false;
+        }
+
+        [Route]
+        private void On(PageErrorCommand command)
+        {
+            IsVisible = false;
+            Debug.LogError($"Error on page {name}: {command.ErrorCode} - {command.Message}");
         }
     }
 }

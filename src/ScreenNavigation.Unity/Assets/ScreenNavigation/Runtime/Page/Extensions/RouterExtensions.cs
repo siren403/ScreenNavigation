@@ -27,14 +27,5 @@ namespace ScreenNavigation.Page.Extensions
         {
             return router.PublishAsync(new BackPageCommand(), ct);
         }
-
-        internal static ValueTask PageErrorAsync(
-            this Router router,
-            Exception exception,
-            CancellationToken ct = default
-        )
-        {
-            return router.PublishAsync(new PageErrorCommand(exception), ct);
-        }
     }
 }
