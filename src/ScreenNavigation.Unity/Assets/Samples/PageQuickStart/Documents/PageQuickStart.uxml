@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:UXML
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ui="UnityEngine.UIElements"
+    xmlns:uie="UnityEditor.UIElements"
+    xsi:noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd">
+    <ui:Style src="./PageQuickStart.uss" />
+    <ui:VisualElement>
+        <ui:Button text="Back" />
+        <ui:VisualElement>
+            <ui:Label text="Login" />
+            <ui:VisualElement class="button-container">
+                <ui:Button class="login to" text="To" />
+                <ui:Button class="login push" text="Push" />
+                <ui:Button class="login replace" text="Replace" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement>
+            <ui:Label text="Home" />
+            <ui:VisualElement class="button-container">
+                <ui:Button class="home to" text="To" />
+                <ui:Button class="home push" text="Push" />
+                <ui:Button class="home replace" text="Replace" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement>
+            <ui:Label text="Settings" />
+            <ui:VisualElement class="button-container">
+                <ui:Button class="settings to" text="To" />
+                <ui:Button class="settings push" text="Push" />
+                <ui:Button class="settings replace" text="Replace" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

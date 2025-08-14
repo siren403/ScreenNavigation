@@ -1,0 +1,21 @@
+Label {
+    font-size: 50px;
+    color: white;
+}
+
+.button-container {
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+Button {
+    height: 120px;
+    font-size: 50px;
+}
+
+.button-container > Button {
+    flex-grow: 1;
+    flex-basis: 0;
+}
+

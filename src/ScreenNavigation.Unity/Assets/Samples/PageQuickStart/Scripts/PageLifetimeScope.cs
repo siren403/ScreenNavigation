@@ -1,8 +1,8 @@
 using Samples.PageQuickStart.Pages;
 using ScreenNavigation.Extensions;
-using ScreenNavigation.Page.Commands;
 using ScreenNavigation.Page.Extensions;
 using UnityEngine;
+using UnityEngine.UIElements;
 using VContainer;
 using VContainer.Unity;
 using VitalRouter;
@@ -24,20 +24,35 @@ namespace Samples.PageQuickStart
             });
 
             builder.RegisterEntryPoint<EntryPoint>();
+            builder.RegisterComponentInHierarchy<UIDocument>();
         }
 
-        class EntryPoint : ITickable
+        class EntryPoint : IInitializable, ITickable
         {
             private readonly Router _router;
+            private readonly UIDocument _document;
 
-            public EntryPoint(Router router)
+            public EntryPoint(Router router, UIDocument document)
             {
                 _router = router;
+                _document = document;
             }
 
             public void Initialize()
             {
-                // _router.PublishAsync(new ToPageCommand(PageIds.Login));
+                var root = _document.rootVisualElement;
+                
+                var loginTo = root.Q<Button>(classes: new[] { "login", "to" });
+                var loginPush = root.Q<Button>(classes: new[] { "login", "push" });
+                var loginReplace = root.Q<Button>(classes: new[] { "login", "replace" });
+
+                var homeTo = root.Q<Button>(classes: new[] { "home", "to" });
+                var homePush = root.Q<Button>(classes: new[] { "home", "push" });
+                var homeReplace = root.Q<Button>(classes: new[] { "home", "replace" });
+
+                var settingsTo = root.Q<Button>(classes: new[] { "settings", "to" });
+                var settingsPush = root.Q<Button>(classes: new[] { "settings", "push" });
+                var settingsReplace = root.Q<Button>(classes: new[] { "settings", "replace" });
             }
 
             public void Tick()
