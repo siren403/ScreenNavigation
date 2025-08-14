@@ -4,7 +4,11 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "ScreenNavigation"
+        "ScreenNavigation",
+        "UniTask",
+        "VContainer",
+        "VitalRouter",
+        "GameKit.Common"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

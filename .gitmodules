@@ -1,0 +1,3 @@
+[submodule "src/GameKit"]
+	path = src/GameKit
+	url = https://github.com/siren403/GameKit.git

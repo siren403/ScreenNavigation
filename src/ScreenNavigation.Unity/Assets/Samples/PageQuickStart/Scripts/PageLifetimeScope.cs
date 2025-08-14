@@ -1,6 +1,7 @@
 using Samples.PageQuickStart.Pages;
 using ScreenNavigation.Extensions;
 using ScreenNavigation.Page.Commands;
+using ScreenNavigation.Page.Extensions;
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
@@ -41,22 +42,21 @@ namespace Samples.PageQuickStart
 
             public void Tick()
             {
-
                 #region To
 
                 if (Input.GetKeyDown(KeyCode.Alpha1))
                 {
-                    _router.PublishAsync(new ToPageCommand(PageIds.Login));
+                    _router.ToPageAsync(PageIds.Login);
                 }
 
                 if (Input.GetKeyDown(KeyCode.Alpha2))
                 {
-                    _router.PublishAsync(new ToPageCommand(PageIds.Home));
+                    _router.ToPageAsync(PageIds.Home);
                 }
 
                 if (Input.GetKeyDown(KeyCode.Alpha3))
                 {
-                    _router.PublishAsync(new ToPageCommand(PageIds.Settings));
+                    _router.ToPageAsync(PageIds.Settings);
                 }
 
                 #endregion
@@ -65,17 +65,17 @@ namespace Samples.PageQuickStart
 
                 if (Input.GetKeyDown(KeyCode.Q))
                 {
-                    _router.PublishAsync(new PushPageCommand(PageIds.Login));
+                    _router.PushPageAsync(PageIds.Login);
                 }
 
                 if (Input.GetKeyDown(KeyCode.W))
                 {
-                    _router.PublishAsync(new PushPageCommand(PageIds.Home));
+                    _router.PushPageAsync(PageIds.Home);
                 }
 
                 if (Input.GetKeyDown(KeyCode.E))
                 {
-                    _router.PublishAsync(new PushPageCommand(PageIds.Settings));
+                    _router.PushPageAsync(PageIds.Settings);
                 }
 
                 #endregion
@@ -84,24 +84,24 @@ namespace Samples.PageQuickStart
 
                 if (Input.GetKeyDown(KeyCode.A))
                 {
-                    _router.PublishAsync(new ReplacePageCommand(PageIds.Login));
+                    _router.ReplacePageAsync(PageIds.Login);
                 }
 
                 if (Input.GetKeyDown(KeyCode.S))
                 {
-                    _router.PublishAsync(new ReplacePageCommand(PageIds.Home));
+                    _router.ReplacePageAsync(PageIds.Home);
                 }
 
                 if (Input.GetKeyDown(KeyCode.D))
                 {
-                    _router.PublishAsync(new ReplacePageCommand(PageIds.Settings));
+                    _router.ReplacePageAsync(PageIds.Settings);
                 }
 
                 #endregion
 
                 if (Input.GetKeyDown(KeyCode.Escape))
                 {
-                    _router.PublishAsync(new BackPageCommand());
+                    _router.BackPageAsync();
                 }
             }
         }

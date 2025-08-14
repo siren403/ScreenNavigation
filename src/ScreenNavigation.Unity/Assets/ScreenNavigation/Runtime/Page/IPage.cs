@@ -4,6 +4,7 @@ namespace ScreenNavigation.Page
 {
     public interface IPage
     {
-        Router Router { get; }
+        bool IsVisible { set; get; }
+        Subscription MapTo(ICommandSubscribable subscribable);
     }
 }

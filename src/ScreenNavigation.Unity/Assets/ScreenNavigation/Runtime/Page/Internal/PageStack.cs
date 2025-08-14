@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 
-namespace ScreenNavigation.Page
+namespace ScreenNavigation.Page.Internal
 {
-    public class PageStack
+    internal class PageStack
     {
         private readonly Stack<string> _stack = new();
 

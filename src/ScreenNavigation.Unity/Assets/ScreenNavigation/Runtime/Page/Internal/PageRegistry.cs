@@ -1,26 +1,54 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using VitalRouter;
 
-namespace ScreenNavigation.Page
+namespace ScreenNavigation.Page.Internal
 {
-    public class PageRegistry : IDisposable
+    public readonly struct PageEntry : IDisposable
+    {
+        public readonly string Id;
+        public readonly IPage Page;
+        public readonly Router Router;
+
+        public PageEntry(string id, IPage page, Router router)
+        {
+            Id = id;
+            Page = page ?? throw new ArgumentNullException(nameof(page), "Page cannot be null.");
+            Router = router ?? throw new ArgumentNullException(nameof(router), "Router cannot be null.");
+        }
+
+        public void Deconstruct(out string id, out IPage page, out Router router)
+        {
+            id = Id;
+            page = Page;
+            router = Router;
+        }
+
+        public void Dispose()
+        {
+            Router?.Dispose();
+        }
+    }
+
+    internal class PageRegistry : IDisposable
     {
         /// <summary>
         /// Id: IPage
         /// </summary>
-        private readonly Dictionary<string, IPage> _cachedPages = new();
+        private readonly Dictionary<string, PageEntry> _cachedPages = new();
+
         /// <summary>
         /// Id: Addressable Key
         /// </summary>
         private readonly Dictionary<string, AsyncLazy<IPage>> _addressableFactories = new();
+
         private readonly List<AsyncOperationHandle> _loadedHandles = new();
 
-        public IEnumerable<IPage> CachedPages => _cachedPages.Values;
+        public IEnumerable<PageEntry> CachedPages => _cachedPages.Values;
 
         public void AddPage(string pageId, IPage page)
         {
@@ -34,7 +62,14 @@ namespace ScreenNavigation.Page
                 throw new InvalidOperationException($"Page with ID '{pageId}' already exists in the registry.");
             }
 
-            _cachedPages[pageId] = page ?? throw new ArgumentNullException(nameof(page), "Page cannot be null.");
+            var router = new Router(CommandOrdering.Drop);
+            page.MapTo(router);
+            var entry = new PageEntry(
+                pageId,
+                page,
+                router
+            );
+            _cachedPages[pageId] = entry;
         }
 
         public void AddPage<T>(string pageId, string key, Transform parent = null) where T : IPage
@@ -59,6 +94,7 @@ namespace ScreenNavigation.Page
                     throw new Exception(
                         $"Failed to load page with ID '{pageId}' using Addressables. Status: {handle.Status}");
                 }
+
                 _loadedHandles.Add(handle);
                 return handle.Result.GetComponent<T>() as IPage;
             });
@@ -69,7 +105,7 @@ namespace ScreenNavigation.Page
             }
         }
 
-        public async UniTask<IPage> GetPageAsync(string pageId)
+        public async UniTask<PageEntry> GetPageAsync(string pageId)
         {
             if (_cachedPages.TryGetValue(pageId, out var cached))
             {
@@ -82,10 +118,15 @@ namespace ScreenNavigation.Page
             }
 
             var page = await factory;
-            _cachedPages[pageId] = page ?? throw new Exception(
-                $"Failed to create page with ID '{pageId}'. Factory returned null."
+            var router = new Router(CommandOrdering.Drop);
+            page.MapTo(router);
+            var entry = new PageEntry(
+                pageId,
+                page,
+                router
             );
-            return page;
+            _cachedPages[pageId] = entry;
+            return entry;
         }
 
         public void Dispose()
@@ -96,6 +137,11 @@ namespace ScreenNavigation.Page
                 {
                     Addressables.Release(handle);
                 }
+            }
+
+            foreach (var entry in _cachedPages.Values)
+            {
+                entry.Dispose();
             }
 
             _cachedPages.Clear();

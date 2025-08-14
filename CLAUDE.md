@@ -114,51 +114,64 @@ public interface IParentProvider
 
 ### 현재 구현된 핵심 컴포넌트
 
-**PagePresenter**: VitalRouter 기반 Command 처리기
+**PageNavigator**: VitalRouter 기반 상위 네비게이션 관리자
 - `ToPageCommand`: 모든 페이지 클리어 후 새 페이지 이동 (중복 방지)
 - `PushPageCommand`: 현재 페이지 위에 새 페이지 추가 (중복 방지)
 - `BackPageCommand`: 이전 페이지로 돌아가기
 - `ReplacePageCommand`: 현재 페이지를 새 페이지로 교체 (중복 방지)
-- 페이지별 Router를 통한 `ShowCommand`/`HideCommand` 발행
+- PageStack 관리 및 비즈니스 로직 처리
+- `IsTopPage()` 메서드를 통한 페이지 상태 확인
+
+**PagePresenter**: 순수 렌더링 로직 담당
+- 페이지 Show/Hide 처리 (`ShowPageAsync`, `HidePageAsync`)
+- 렌더링 상태 추적 (HashSet 기반)
+- PageEntry를 통한 페이지-라우터 조합 처리
+- Registry 의존성 없는 순수 렌더링 컴포넌트
 
 **PageRegistry**: 페이지 등록 및 인스턴스 관리
 - Addressable 시스템을 통한 동적 로딩
-- 캐싱을 통한 성능 최적화
+- PageEntry 구조체를 통한 캐싱 및 성능 최적화
+- 페이지별 Router 생성 및 MapTo 자동 처리
 
 **PageStack**: 페이지 히스토리 관리
 - Stack 기반 페이지 순서 추적
+- Internal 네임스페이스로 캡슐화
+
+**PageEntry**: 페이지 데이터 캡슐화 구조체
+- PageId, IPage, Router를 하나로 묶은 불변 구조체
+- Deconstruct 지원으로 편리한 구조 분해
+- IDisposable 구현으로 Router 리소스 관리
 
 **IPage**: 페이지 라이프사이클 인터페이스
-- 각 페이지가 자체 `Router` 소유 및 노출
-- `ShowCommand`/`HideCommand`를 통한 비동기 애니메이션 처리
-
-**CanvasPage**: IPage의 기본 구현체
-- LitMotion 기반 Show/Hide 애니메이션 지원
-- Canvas enabled/disabled를 통한 화면 제어
-- VitalRouter 기반 Command 처리 (`[Route]` 어트리뷰트)
+- `IsVisible` 프로퍼티를 통한 가시성 상태 관리
+- `MapTo()` 메서드를 통한 Command 라우팅 등록
 
 ### 현재 아키텍처 vs 설계 문서 차이점
 
-**실제 구현**:
-- PagePresenter가 페이지 네비게이션 전담 (Command 수신, 라우팅)
-- 각 페이지가 자체 Router 소유하여 Show/Hide Command 처리
+**✅ 실제 구현 (2024.08.14 리팩토링 완료)**:
+- **Navigator/Presenter 완전 분리**: PageNavigator(비즈니스 로직) + PagePresenter(렌더링)
+- **PageEntry 구조체**: 페이지-라우터-ID 캡슐화로 타입 안전성 확보
+- **Internal 네임스페이스**: 내부 구현체들의 캡슐화 강화
+- **포괄적인 단위 테스트**: Navigator 패턴 검증 완료
 - Parameters 지원 없음 (pageId만 사용)
 - **비동기 방식 페이지 제어** (ShowCommand/HideCommand with UniTask)
 - **애니메이션 지원** (LitMotion 통합)
 - **중복 방지 로직** (동일 페이지 연속 실행 방지)
 
-**설계 문서**:
-- Controller/Navigator 분리 구조
-- Event 기반 시스템
-- Parameters 지원
+**설계 문서와의 일치점**:
+- ✅ Navigator/Presenter 분리 구조 (완전 구현됨)
+- ✅ 명확한 책임 분리 (완전 구현됨)
+- ❌ Event 기반 시스템 (미구현)
+- ❌ Parameters 지원 (미구현)
 
 **✅ 구현 완료된 기능**:
-- VitalRouter 기반 Command 패턴
-- PageStack을 통한 히스토리 관리
-- Addressable을 통한 동적 로딩
-- **페이지별 독립 Router 시스템**
-- **비동기 Show/Hide 애니메이션**
-- **중복 네비게이션 방지**
+1. **Navigator 패턴**: PageNavigator와 PagePresenter의 완전한 책임 분리
+2. **VitalRouter 기반 Command 패턴**: 모든 네비게이션 명령어 처리
+3. **PageStack을 통한 히스토리 관리**: Stack 기반 페이지 순서 추적
+4. **Addressable을 통한 동적 로딩**: PageRegistry의 비동기 페이지 로딩
+5. **PageEntry 구조체**: 타입 안전한 페이지 데이터 캡슐화
+6. **포괄적인 테스트 커버리지**: Navigator 패턴 및 Command 처리 검증
+7. **Internal 네임스페이스**: 구현 세부사항 캡슐화
 
 ## 2단계: History 기능 추가
 
@@ -271,17 +284,19 @@ public partial class NavigationEventLogger : MonoBehaviour
 
 ## 개발 순서 및 현재 상태
 
-### ✅ 완료된 기능
-1. **Page 도메인 기본 구현**: To, Push, Back, Replace Command 처리 (중복 방지 포함)
-2. **PageStack 히스토리 관리**: Stack 기반 페이지 순서 추적
-3. **PageRegistry**: Addressable 기반 동적 로딩 및 캐싱
-4. **VitalRouter 통합**: Command 패턴 기반 아키텍처
-5. **페이지별 독립 Router**: 각 페이지가 자체 Router 소유 및 생명주기 관리
-6. **비동기 애니메이션 시스템**: ShowCommand/HideCommand를 통한 LitMotion 애니메이션
-7. **Canvas 기반 화면 제어**: CanvasPage를 통한 기본적인 UI 표시/숨김
+### ✅ 완료된 기능 (2024.08.14 업데이트)
+1. **Navigator 패턴 완전 구현**: PageNavigator와 PagePresenter의 완전한 책임 분리
+2. **Page 도메인 기본 구현**: To, Push, Back, Replace Command 처리 (중복 방지 포함)
+3. **PageStack 히스토리 관리**: Stack 기반 페이지 순서 추적 (Internal 네임스페이스)
+4. **PageRegistry 고도화**: PageEntry 기반 캐싱 및 Router 자동 생성
+5. **VitalRouter 통합**: Command 패턴 기반 아키텍처
+6. **타입 안전성 강화**: PageEntry 구조체를 통한 데이터 캡슐화
+7. **포괄적인 테스트**: Navigator 패턴 및 모든 Command 처리 검증
+8. **Internal 아키텍처**: 구현 세부사항의 완전한 캡슐화
 
 ### 🚧 현재 진행 중
-- Page 도메인 고도화 (Parameters, Event 시스템)
+- Error/Exception 처리 시스템 설계 (PageErrorCommand vs Exception 패턴)
+- Result 패턴 vs Exception 패턴 검토 중
 
 ### 📋 향후 계획
 1. **Event 시스템 추가**: 네비게이션 이벤트 발행

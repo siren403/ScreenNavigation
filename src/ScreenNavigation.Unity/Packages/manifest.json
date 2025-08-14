@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.aaron.game-kit.common": "file:C:/Users/rat_work/workspace/unity/ScreenNavigation/src/GameKit/src/GameKit.Unity/Assets/GameKit/GameKit.Common",
     "com.annulusgames.lit-motion": "https://github.com/annulusgames/LitMotion.git?path=src/LitMotion/Assets/LitMotion#v2.0.1",
     "com.annulusgames.lit-motion.animation": "https://github.com/annulusgames/LitMotion.git?path=src/LitMotion/Assets/LitMotion.Animation#v2.0.1",
     "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask#2.5.10",

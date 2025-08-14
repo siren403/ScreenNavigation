@@ -16,6 +16,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.cysharp.zlogger",
+            "expression": "",
+            "define": "USE_ZLOGGER"
+        }
+    ],
     "noEngineReferences": false
 }

@@ -1,5 +1,11 @@
 {
   "dependencies": {
+    "com.aaron.game-kit.common": {
+      "version": "file:C:/Users/rat_work/workspace/unity/ScreenNavigation/src/GameKit/src/GameKit.Unity/Assets/GameKit/GameKit.Common",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {}
+    },
     "com.annulusgames.lit-motion": {
       "version": "https://github.com/annulusgames/LitMotion.git?path=src/LitMotion/Assets/LitMotion#v2.0.1",
       "depth": 0,
