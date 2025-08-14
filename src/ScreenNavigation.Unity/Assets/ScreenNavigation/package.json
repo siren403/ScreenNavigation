@@ -1,0 +1,7 @@
+﻿{
+  "name": "com.aaron.screen-navigation",
+  "displayName": "ScreenNavigation",
+  "version": "0.1.0",
+  "description": "Screen navigation system for Unity",
+  "unity": "2021.3"
+}
